@@ -1,20 +1,18 @@
-import logging 
-
-
+import logging
 
 """
 Ваше задание:
 
 1. Используя код из differential_evolution.py, напишите собственный логгер, который будет логгировать каждый запуск и каждый логический этап работы алгоритма
-2. Ваш логгер должен сохранять логи с 1, 2, 3 уровнями логгирования в файл logging_de.log
-3. Если результат отработки алгоритма больше 1e-3, то логгируем результат с уровнем ERROR. Если результат больше 1e-1, то CRITICAL. 
-    Также лог должен в себе отражать параметры алгоритма, такие как начальная популяция, размер популяции, количество итераций и тд.
-4. ERROR и CRITICAL должны сохранятся в файл errors.log
-5. Напишите свой форматтер, который будет отражать: 
-    a. Время логгирования в формате datetime
-    б. Имя логгера
-    в. Уровень логгирования
-    г. Действие, которое было выполнено
+    2. Ваш логгер должен сохранять логи с 1, 2, 3 уровнями логгирования в файл logging_de.log
+    3. Если результат отработки алгоритма больше 1e-3, то логгируем результат с уровнем ERROR. Если результат больше 1e-1, то CRITICAL. 
+       Также лог должен в себе отражать параметры алгоритма, такие как начальная популяция, размер популяции, количество итераций и тд.
+    4. ERROR и CRITICAL должны сохранятся в файл errors.log
+    5. Напишите свой форматтер, который будет отражать:
+        a. Время логгирования в формате datetime
+        б. Имя логгера
+        в. Уровень логгирования
+        г. Действие, которое было выполнено
 
 ВАЖНО! 
 Весь код требуется писать в данном файле, не трогая исходный differential_evolution.py
@@ -22,8 +20,38 @@ import logging
 Удачи!
 """
 
-
 import numpy as np
+
+logger = logging.getLogger("logger_diff_evolution")
+logger.setLevel(logging.DEBUG)
+
+# logger.debug("Debugging")
+# logger.info("Information")
+# logger.warning("Warning")
+# logger.error("ERROR")
+# logger.critical("CRITICAL!!!")
+
+
+class ExceptionsFilter(logging.Filter):
+    def filter(self, record):
+        return record.levelno < logging.WARNING
+
+
+class ErrorsFilter(logging.Filter):
+    def filter(self, record):
+        return record.levelno >= logging.WARNING
+
+
+handler_for_exceptions = logging.FileHandler("logging_de.log", mode='w')
+handler_for_exceptions.addFilter(ExceptionsFilter())
+handler_for_exceptions.setFormatter(logging.Formatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s"))
+logger.addHandler(handler_for_exceptions)
+
+handler_for_errors = logging.FileHandler("errors.log", mode='w')
+handler_for_errors.addFilter(ErrorsFilter())
+handler_for_errors.setFormatter(logging.Formatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s"))
+logger.addHandler(handler_for_errors)
+
 
 class DifferentialEvolution:
     def __init__(self, fobj, bounds, mutation_coefficient=0.8, crossover_coefficient=0.7, population_size=20):
@@ -60,12 +88,12 @@ class DifferentialEvolution:
 
         self.best_idx = np.argmin(self.fitness)
         self.best = self.population_denorm[self.best_idx]
-    
+
     def _mutation(self):
-        self.a, self.b, self.c = self.population[np.random.choice(self.idxs, 3, replace = False)]
+        self.a, self.b, self.c = self.population[np.random.choice(self.idxs, 3, replace=False)]
         self.mutant = np.clip(self.a + self.mutation_coefficient * (self.b - self.c), 0, 1)
         return self.mutant
-    
+
     def _crossover(self):
         cross_points = np.random.rand(self.dimensions) < self.crossover_coefficient
         if not np.any(cross_points):
@@ -77,17 +105,17 @@ class DifferentialEvolution:
         trial = np.where(self.cross_points, self.mutant, self.population[population_index])
         trial_denorm = self.min_bound + trial * self.diff
         return trial, trial_denorm
-    
+
     def _evaluate(self, result_of_evolution, population_index):
         if result_of_evolution < self.fitness[population_index]:
-                self.fitness[population_index] = result_of_evolution
-                self.population[population_index] = self.trial
-                if result_of_evolution < self.fitness[self.best_idx]:
-                    self.best_idx = population_index
-                    self.best = self.trial_denorm
+            self.fitness[population_index] = result_of_evolution
+            self.population[population_index] = self.trial
+            if result_of_evolution < self.fitness[self.best_idx]:
+                self.best_idx = population_index
+                self.best = self.trial_denorm
 
     def iterate(self):
-    
+
         for population_index in range(self.population_size):
             self.idxs = [idx for idx in range(self.population_size) if idx != population_index]
 
@@ -95,14 +123,22 @@ class DifferentialEvolution:
             self.cross_points = self._crossover()
 
             self.trial, self.trial_denorm = self._recombination(population_index)
-    
+
             result_of_evolution = self.fobj(self.trial_denorm)
 
             self._evaluate(result_of_evolution, population_index)
 
+            if result_of_evolution > 1e-1:
+                logger.critical(f"Result of evolution is {result_of_evolution}, initial population is {self.population}, size of population is {self.population_size}, number of commited iterations is {population_index}")
+            elif result_of_evolution > 1e-3:
+                logger.error(f"Result of evolution is {result_of_evolution}, initial population is {self.population}, size of population is {self.population_size}, number of commited iterations is {population_index}")
+            else:
+                logger.info(f"Successful! Result of evolution is {result_of_evolution}")
+
 
 def rastrigin(array, A=10):
-    return A * 2 + (array[0] ** 2 - A * np.cos(2 * np.pi * array[0])) + (array[1] ** 2 - A * np.cos(2 * np.pi * array[1]))
+    return A * 2 + (array[0] ** 2 - A * np.cos(2 * np.pi * array[0])) + (
+            array[1] ** 2 - A * np.cos(2 * np.pi * array[1]))
 
 
 if __name__ == "__main__":
@@ -120,7 +156,10 @@ if __name__ == "__main__":
                 for crossover_coefficient in crossover_coefficient_array:
                     for population_size in population_size_array:
 
-                        de_solver = DifferentialEvolution(function_obj, bounds, mutation_coefficient=mutation_coefficient, crossover_coefficient=crossover_coefficient, population_size=population_size)
+                        de_solver = DifferentialEvolution(function_obj, bounds,
+                                                          mutation_coefficient=mutation_coefficient,
+                                                          crossover_coefficient=crossover_coefficient,
+                                                          population_size=population_size)
 
                         de_solver._init_population()
 
