@@ -14,11 +14,6 @@ def rastrigin(array, A=10):
 BOUNDS = np.array([[-20, 20], [-20, 20]])
 FOBJ = rastrigin
 
-
-def test_fobj():
-    assert FOBJ([1, 2, 3], 1) == 5
-
-
 """
 Ваша задача добиться 100% покрытия тестами DifferentialEvolution
 Различные этапы тестирования логики разделяйте на различные функции
@@ -26,21 +21,31 @@ def test_fobj():
 pytest -s test_de.py --cov-report=json --cov
 """
 
+
+def test_fobj():
+    assert FOBJ([1, 2, 3], 1) == 5  # проверяем корректную работу функции
+
+
 de = DifferentialEvolution(FOBJ, BOUNDS)
 
 
 def test_initialization():
-    assert de.fobj == FOBJ
-    # assert np.array(de.bounds) == BOUNDS
-    assert de.mutation_coefficient == 0.8
+    assert de.fobj == FOBJ  # проверяем, что указанные параметры сохранены корректно
+    assert de.bounds.all() == BOUNDS.all()
+    assert de.mutation_coefficient == 0.8  # а также что используются предполагаемые аргументы по умолчанию
     assert de.crossover_coefficient == 0.7
     assert de.population_size == 20
-    assert de.dimensions == 2  # Предполагаем, что у нас есть 3 измерения в примере
+    assert de.dimensions == 2
 
 
 def test_init_population():
     de._init_population()
-    assert de.diff.all() >= 0
+    assert np.array(
+        [[de.min_bound, de.max_bound]]).all() == BOUNDS.T.all()  # проверяем корректность работы функции инициализации
+    assert de.diff.all() >= 0  # разница должна быть неотрицательной
+    assert de.fitness.shape == (20,)  # по умолчанию размер популяции 20 => размер массива fitness должен быть (20,)
+    assert de.best_idx >= 0  # индекс должен быть неотрицательным
+
 
 def test_iterate():
     ftns1 = de.fitness
@@ -48,30 +53,23 @@ def test_iterate():
     de.iterate()
     ftns2 = de.fitness
     bst2 = de.best
-    assert ftns1.all() <= ftns2.all()
-    assert bst1.all() <= bst2.all()
+    assert ftns1.all() <= ftns2.all()  # проверяем, что после итерации массив fitness стал не хуже
+    assert bst1.all() <= bst2.all()  # а также что лучший элемент стал не хуже
+
 
 def test_mutation():
     de._init_population()
     de._mutation()
-    assert de.mutant.shape == (2,)
+    assert de.mutant.shape == (2,)  # проверяем корректность размера мутанта
 
-# print(np.array(de.cross_points))
-# def test_crossover():
-#     de._crossover()
-#     assert de.cross_points).any() == True
+
+def test_crossover():
+    de._crossover()
+    assert de.cross_points.any() == True  # функция кроссовер должна работать так, чтобы хотя бы одно полученное значение было истинно
+
 
 def test_recombination():
-    de._init_population()
-    # de._mutation()
-    de._crossover()
     trial, trial_denorm = de._recombination(0)
-    assert trial.shape == (2,)
-
-
-
-
-# pytest --cov=logging_de.py
-
-
-# coverage run -m pytest test_de.py
+    assert trial.shape == (2,)  # проверяем корректность размера объектов, полученных в результате функции recombination
+    assert trial_denorm.shape == (2,)
+    
