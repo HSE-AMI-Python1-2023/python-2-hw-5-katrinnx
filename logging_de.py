@@ -3,7 +3,7 @@ import logging
 """
 Ваше задание:
 
-1. Используя код из differential_evolution.py, напишите собственный логгер, который будет логгировать каждый запуск и каждый логический этап работы алгоритма
+    1. Используя код из differential_evolution.py, напишите собственный логгер, который будет логгировать каждый запуск и каждый логический этап работы алгоритма
     2. Ваш логгер должен сохранять логи с 1, 2, 3 уровнями логгирования в файл logging_de.log
     3. Если результат отработки алгоритма больше 1e-3, то логгируем результат с уровнем ERROR. Если результат больше 1e-1, то CRITICAL. 
        Также лог должен в себе отражать параметры алгоритма, такие как начальная популяция, размер популяции, количество итераций и тд.
@@ -24,12 +24,6 @@ import numpy as np
 
 logger = logging.getLogger("logger_diff_evolution")
 logger.setLevel(logging.DEBUG)
-
-# logger.debug("Debugging")
-# logger.info("Information")
-# logger.warning("Warning")
-# logger.error("ERROR")
-# logger.critical("CRITICAL!!!")
 
 
 class ExceptionsFilter(logging.Filter):
@@ -129,11 +123,21 @@ class DifferentialEvolution:
             self._evaluate(result_of_evolution, population_index)
 
             if result_of_evolution > 1e-1:
-                logger.critical(f"Result of evolution is {result_of_evolution}, initial population is {self.population}, size of population is {self.population_size}, number of commited iterations is {population_index}")
+                logger.critical(
+                    f"VERY BAD result of evolution on {population_index} iteration: {result_of_evolution}\n initial "
+                    f"population is {self.population}, size of population is {self.population_size}, "
+                    f"mutation coefficient is {self.mutation_coefficient}, crossover coefficient "
+                    f"is {self.crossover_coefficient}")
+
             elif result_of_evolution > 1e-3:
-                logger.error(f"Result of evolution is {result_of_evolution}, initial population is {self.population}, size of population is {self.population_size}, number of commited iterations is {population_index}")
+                logger.error(
+                    f"BAD result of evolution on {population_index} iteration: {result_of_evolution}\n initial "
+                    f"population is {self.population}, size of population is {self.population_size}, "
+                    f"mutation coefficient is {self.mutation_coefficient}, crossover coefficient is "
+                    f"{self.crossover_coefficient}")
+
             else:
-                logger.info(f"Successful! Result of evolution is {result_of_evolution}")
+                logger.info(f"Successful! Result of evolution on {population_index} iteration is {result_of_evolution}")
 
 
 def rastrigin(array, A=10):
@@ -156,6 +160,8 @@ if __name__ == "__main__":
                 for crossover_coefficient in crossover_coefficient_array:
                     for population_size in population_size_array:
 
+                        logger.info(
+                            f"Differential evolution with updated parameters has been launched: bounds = {bounds}, steps = {steps}, mutation_coefficient = {mutation_coefficient}, crossover_coefficient = {crossover_coefficient}, population_size = {population_size}")
                         de_solver = DifferentialEvolution(function_obj, bounds,
                                                           mutation_coefficient=mutation_coefficient,
                                                           crossover_coefficient=crossover_coefficient,
@@ -164,4 +170,5 @@ if __name__ == "__main__":
                         de_solver._init_population()
 
                         for _ in range(steps):
+                            logger.info(f"Step {_ + 1} out of {steps} started")
                             de_solver.iterate()
